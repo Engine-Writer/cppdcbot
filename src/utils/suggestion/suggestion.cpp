@@ -1,6 +1,21 @@
 #include "suggestion.h"
 #include "../../globals/globals.h"
 
+// DRYing out code. local helper
+void createTemporaryMessage(dpp::cluster& bot, const dpp::message_create_t& event, const std::string& error_msg, uint64_t delay)
+{
+    bot.message_create(dpp::message(event.msg.channel_id, error_msg),
+        [&bot](const dpp::confirmation_callback_t& cb) {
+            if (!cb.is_error()) {
+                const auto& msg = std::get<dpp::message>(cb.value);
+                bot.start_timer([&bot, msg](dpp::timer timer) {
+                    bot.message_delete(msg.id, msg.channel_id);
+                    bot.stop_timer(timer);
+                }, delay);
+            }
+        });
+}
+
 void utils::suggestion::createSuggestion(dpp::cluster& bot, const dpp::message_create_t& event)
 {
     dpp::user user = event.msg.author;
@@ -11,33 +26,15 @@ void utils::suggestion::createSuggestion(dpp::cluster& bot, const dpp::message_c
     if (event.msg.content.empty())
     {
         // Duplicate deletion removed
-        bot.message_create(dpp::message(event.msg.channel_id, 
-            "You cannot send an empty suggestion. Please add text to your message."),
-            [&bot](const dpp::confirmation_callback_t& cb) {
-                if (!cb.is_error()) {
-                    const auto& msg = std::get<dpp::message>(cb.value);
-                    bot.start_timer([&bot, msg](dpp::timer timer) {
-                        bot.message_delete(msg.id, msg.channel_id);
-                        bot.stop_timer(timer);
-                    }, 5);
-                }
-            });
+        createTemporaryMessage(bot, event, 
+            "You cannot send an empty suggestion. Please add text to your message.", 5);
         return;
     }
 
     if (event.msg.type != dpp::mt_default)
     {
-        bot.message_create(dpp::message(event.msg.channel_id, 
-            "You cannot reply to a suggestion. Consider making a thread or sending the suggestion normally."),
-            [&bot](const dpp::confirmation_callback_t& cb) {
-                if (!cb.is_error()) {
-                    const auto& msg = std::get<dpp::message>(cb.value);
-                    bot.start_timer([&bot, msg](dpp::timer timer) {
-                        bot.message_delete(msg.id, msg.channel_id);
-                        bot.stop_timer(timer);
-                    }, 5);
-                }
-            });
+        createTemporaryMessage(bot, event, 
+            "You cannot reply to a suggestion. Consider making a thread or sending the suggestion normally.", 5);
         return;
     }
     
