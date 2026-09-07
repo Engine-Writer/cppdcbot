@@ -77,17 +77,24 @@ int main()
         if (moderationService.handleMessage(event))
             return;
 
+        // skip system messages. Frequent bug with a lot of complaints from users.
+        if (event.msg.type != dpp::mt_default && event.msg.type != dpp::mt_reply) 
+            return;
+
         const dpp::channel* channel = dpp::find_channel(event.msg.channel_id);
 
-        if (channel && channel->name == "suggestions")
+        // This bug hasn't happened yet, but better safe than sorry
+        if (channel && channel->name == "suggestions" && !channel->is_thread())
             utils::suggestion::createSuggestion(bot, event);
     });
 
     bot.on_button_click([&bot](const dpp::button_click_t& event) {
         if (event.custom_id == "delSuggestion")
             utils::suggestion::deleteSuggestion(bot, event);
+
         else if (event.custom_id == "editSuggestion")
             utils::suggestion::editSuggestion(bot, event);
+
         else if (event.custom_id.starts_with("hint_button_"))
             cmd::handleProjectHintButton(bot, event);
     });
