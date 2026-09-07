@@ -5,7 +5,7 @@
 void createTemporaryMessage(dpp::cluster& bot, const dpp::message_create_t& event, const std::string& error_msg, uint64_t delay)
 {
     bot.message_create(dpp::message(event.msg.channel_id, error_msg),
-        [&bot](const dpp::confirmation_callback_t& cb)
+        [&bot, delay](const dpp::confirmation_callback_t& cb)
         {
             if (!cb.is_error()) 
             {
