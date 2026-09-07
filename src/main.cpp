@@ -83,8 +83,11 @@ int main()
 
         const dpp::channel* channel = dpp::find_channel(event.msg.channel_id);
 
-        // This bug hasn't happened yet, but better safe than sorry
-        if (channel && channel->name == "suggestions" && !channel->is_thread())
+        bool isThread = channel->get_type() == dpp::CHANNEL_PUBLIC_THREAD
+             || channel->get_type() == dpp::CHANNEL_PRIVATE_THREAD
+             || channel->get_type() == dpp::CHANNEL_ANNOUNCEMENT_THREAD;
+        
+        if (channel && channel->name == "suggestions" && isThread)
             utils::suggestion::createSuggestion(bot, event);
     });
 
