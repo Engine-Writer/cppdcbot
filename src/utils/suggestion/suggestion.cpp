@@ -5,15 +5,19 @@
 void createTemporaryMessage(dpp::cluster& bot, const dpp::message_create_t& event, const std::string& error_msg, uint64_t delay)
 {
     bot.message_create(dpp::message(event.msg.channel_id, error_msg),
-        [&bot](const dpp::confirmation_callback_t& cb) {
-            if (!cb.is_error()) {
+        [&bot](const dpp::confirmation_callback_t& cb)
+        {
+            if (!cb.is_error()) 
+            {
                 const auto& msg = std::get<dpp::message>(cb.value);
-                bot.start_timer([&bot, msg](dpp::timer timer) {
+                bot.start_timer([&bot, msg](dpp::timer timer)
+                {
                     bot.message_delete(msg.id, msg.channel_id);
                     bot.stop_timer(timer);
                 }, delay);
             }
-        });
+        }
+    );
 }
 
 void utils::suggestion::createSuggestion(dpp::cluster& bot, const dpp::message_create_t& event)
