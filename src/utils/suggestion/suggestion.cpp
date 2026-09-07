@@ -4,84 +4,101 @@
 void utils::suggestion::createSuggestion(dpp::cluster& bot, const dpp::message_create_t& event)
 {
     dpp::user user = event.msg.author;
-    if (!user.is_bot())
+    if (user.is_bot())
+        return;
+
+    bot.message_delete(event.msg.id, event.msg.channel_id);
+    if (event.msg.content.empty())
     {
-        bot.message_delete(event.msg.id, event.msg.channel_id);
-        if (event.msg.content.empty())
-        {
-            bot.message_delete(event.msg.id, event.msg.channel_id);
-            bot.message_create(dpp::message(event.msg.channel_id, 
-                "You cannot send an empty suggestion. Please add text to your message."),
-                [&bot](const dpp::confirmation_callback_t& cb) {
-                    if (!cb.is_error()) {
-                        const auto& msg = std::get<dpp::message>(cb.value);
-                        bot.start_timer([&bot, msg](dpp::timer timer) {
-                            bot.message_delete(msg.id, msg.channel_id);
-                            bot.stop_timer(timer);
-                        }, 5);
-                    }
-                });
-            return;
-        }
-        dpp::embed result = dpp::embed()
-            .set_color(globals::color::defaultColor)
-            .set_title("Suggestion")
-            .set_author(user.format_username(), "", user.get_avatar_url())
-            .set_description(event.msg.content);
-
-        dpp::message msg(event.msg.channel_id, result);
-
-        msg.add_component(
-            dpp::component().add_component(
-                dpp::component()
-                .set_label("Delete")
-                .set_type(dpp::cot_button)
-                .set_style(dpp::cos_danger)
-                .set_id("delSuggestion")
-            )
-        );
-
-        msg.add_component(
-            dpp::component().add_component(
-                dpp::component()
-                .set_label("Edit")
-                .set_type(dpp::cot_button)
-                .set_style(dpp::cos_primary)
-                .set_id("editSuggestion")
-            )
-        );
-
-        bot.message_create(msg, [&bot](const dpp::confirmation_callback_t& callback) {
-            if (!callback.is_error())
-            {
-                const dpp::message msg = std::get<dpp::message>(callback.value);
-                const dpp::snowflake messageId = msg.id;
-                const dpp::snowflake channelId = msg.channel_id;
-
-                const auto yesEmoji = dpp::find_emoji(globals::emoji::yes);
-                const auto noEmoji = dpp::find_emoji(globals::emoji::no);
-
-                if (yesEmoji && noEmoji)
-                {
-                    const std::string yesEmojiText = yesEmoji->format();
-                    const std::string noEmojiText = noEmoji->format();
-
-                    bot.message_add_reaction(messageId, channelId, yesEmojiText, [&bot, messageId, channelId, noEmojiText](const dpp::confirmation_callback_t& reactionCallback) {
-                        if (!reactionCallback.is_error())
-                            bot.message_add_reaction(messageId, channelId, noEmojiText);
-                    });
+        // Duplicate deletion removed
+        bot.message_create(dpp::message(event.msg.channel_id, 
+            "You cannot send an empty suggestion. Please add text to your message."),
+            [&bot](const dpp::confirmation_callback_t& cb) {
+                if (!cb.is_error()) {
+                    const auto& msg = std::get<dpp::message>(cb.value);
+                    bot.start_timer([&bot, msg](dpp::timer timer) {
+                        bot.message_delete(msg.id, msg.channel_id);
+                        bot.stop_timer(timer);
+                    }, 5);
                 }
-                else
-                {
-                    // fallback
-                    bot.message_add_reaction(messageId, channelId, "👍", [&bot, messageId, channelId](const dpp::confirmation_callback_t& reactionCallback) {
-                        if (!reactionCallback.is_error())
-                            bot.message_add_reaction(messageId, channelId, "👎");
-                    });
-                }
-            }
-        });
+            });
+        return;
     }
+
+    if (event.msg.type != dpp::mt_default)
+    {
+        bot.message_create(dpp::message(event.msg.channel_id, 
+            "You cannot reply to a suggestion. Consider making a thread or sending the suggestion normally."),
+            [&bot](const dpp::confirmation_callback_t& cb) {
+                if (!cb.is_error()) {
+                    const auto& msg = std::get<dpp::message>(cb.value);
+                    bot.start_timer([&bot, msg](dpp::timer timer) {
+                        bot.message_delete(msg.id, msg.channel_id);
+                        bot.stop_timer(timer);
+                    }, 5);
+                }
+            });
+        return;
+    }
+    
+    dpp::embed result = dpp::embed()
+        .set_color(globals::color::defaultColor)
+        .set_title("Suggestion")
+        .set_author(user.format_username(), "", user.get_avatar_url())
+        .set_description(event.msg.content);
+
+    dpp::message msg(event.msg.channel_id, result);
+
+    msg.add_component(
+        dpp::component().add_component(
+            dpp::component()
+            .set_label("Delete")
+            .set_type(dpp::cot_button)
+            .set_style(dpp::cos_danger)
+            .set_id("delSuggestion")
+        )
+    );
+
+    msg.add_component(
+        dpp::component().add_component(
+            dpp::component()
+            .set_label("Edit")
+            .set_type(dpp::cot_button)
+            .set_style(dpp::cos_primary)
+            .set_id("editSuggestion")
+        )
+    );
+
+    bot.message_create(msg, [&bot](const dpp::confirmation_callback_t& callback) {
+        if (!callback.is_error())
+        {
+            const dpp::message msg = std::get<dpp::message>(callback.value);
+            const dpp::snowflake messageId = msg.id;
+            const dpp::snowflake channelId = msg.channel_id;
+
+            const auto yesEmoji = dpp::find_emoji(globals::emoji::yes);
+            const auto noEmoji = dpp::find_emoji(globals::emoji::no);
+
+            if (yesEmoji && noEmoji)
+            {
+                const std::string yesEmojiText = yesEmoji->format();
+                const std::string noEmojiText = noEmoji->format();
+
+                bot.message_add_reaction(messageId, channelId, yesEmojiText, [&bot, messageId, channelId, noEmojiText](const dpp::confirmation_callback_t& reactionCallback) {
+                    if (!reactionCallback.is_error())
+                        bot.message_add_reaction(messageId, channelId, noEmojiText);
+                });
+            }
+            else
+            {
+                // fallback
+                bot.message_add_reaction(messageId, channelId, "👍", [&bot, messageId, channelId](const dpp::confirmation_callback_t& reactionCallback) {
+                    if (!reactionCallback.is_error())
+                        bot.message_add_reaction(messageId, channelId, "👎");
+                });
+            }
+        }
+    });
 }
 
 void utils::suggestion::deleteSuggestion(dpp::cluster& bot, const dpp::button_click_t& event)
